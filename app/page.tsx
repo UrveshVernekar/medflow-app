@@ -1,8 +1,19 @@
-export default function HomePage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold">MedFlow EMR</h1>
-      <p className="text-muted-foreground">Healthcare Management System</p>
-    </div>
-  );
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+
+export default async function Home() {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  switch (session.user.role) {
+    case "admin":
+      redirect("/admin");
+    case "doctor":
+      redirect("/doctor");
+    case "patient":
+      redirect("/patient");
+  }
 }
