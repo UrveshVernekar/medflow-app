@@ -2,7 +2,7 @@
 
 import { loginSchema, registerSchema } from "./auth.schema";
 import { createUser, getUserByEmail } from "./auth.service";
-import { signIn } from "@/lib/auth";
+import { signIn, signOut } from "@/lib/auth";
 import { createPatientProfile } from "@/features/patients/patient.service";
 
 export async function registerAction(formData: FormData) {
@@ -69,4 +69,10 @@ export async function loginAction(formData: FormData) {
     success: true,
     role: user.role as "admin" | "doctor" | "patient",
   };
+}
+
+export async function logoutAction() {
+  await signOut({
+    redirectTo: "/login",
+  });
 }

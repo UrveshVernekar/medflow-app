@@ -22,7 +22,7 @@ export async function createDepartmentAction(formData: FormData) {
 
   await createDepartment(parsed.data.name, parsed.data.description);
   revalidatePath("/admin/departments");
-  return { success: true };
+  return { success: true, department: { name: parsed.data.name } };
 }
 
 export async function deleteDepartmentAction(id: string) {
