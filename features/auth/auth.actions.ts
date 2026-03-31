@@ -1,10 +1,9 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { loginSchema, registerSchema } from "./auth.schema";
 import { createUser, getUserByEmail } from "./auth.service";
 import { signIn } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { createPatientProfile } from "@/features/patients/patient.service";
 
 export async function registerAction(formData: FormData) {
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
@@ -21,6 +20,11 @@ export async function registerAction(formData: FormData) {
   }
 
   const user = await createUser(email, password, role);
+
+  // ✅ AUTO CREATE PATIENT PROFILE
+  if (role === "patient") {
+    await createPatientProfile(user.id);
+  }
 
   return {
     success: true,
