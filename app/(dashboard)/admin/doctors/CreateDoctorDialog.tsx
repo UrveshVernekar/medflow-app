@@ -51,7 +51,7 @@ export default function CreateDoctorDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg shadow-blue-500/25 transition-all">
+        <Button className="text-zinc-100 h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg shadow-blue-500/25 transition-all">
           <Plus className="mr-2 h-5 w-5" />
           Add New Doctor
         </Button>
@@ -159,7 +159,7 @@ export default function CreateDoctorDialog({
           <Button
             type="submit"
             disabled={isPending}
-            className="w-full h-14 rounded-2xl text-base font-semibold bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 transition-all shadow-lg shadow-blue-500/25"
+            className="w-full text-zinc-100 h-14 rounded-2xl text-base font-semibold bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 transition-all shadow-lg shadow-blue-500/25"
           >
             {isPending ? "Creating Doctor..." : "Create Doctor"}
           </Button>
