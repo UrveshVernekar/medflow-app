@@ -5,7 +5,7 @@ import DoctorTable from "./DoctorTable";
 import CreateDoctorDialog from "./CreateDoctorDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Filter, X } from "lucide-react";
+import { Users, Filter, X } from "lucide-react";
 
 export default async function DoctorsPage({
   searchParams,
@@ -23,7 +23,7 @@ export default async function DoctorsPage({
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-zinc-50 to-teal-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 p-6 lg:p-10">
       <div className="max-w-7xl mx-auto space-y-10">
-        {/* Page Header */}
+        {/* PAGE HEADER */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="flex items-start gap-5">
             <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-600 to-teal-600 flex items-center justify-center shadow-lg flex-shrink-0">
@@ -33,6 +33,7 @@ export default async function DoctorsPage({
               <h1 className="text-4xl font-semibold tracking-tighter text-zinc-900 dark:text-white">
                 Doctors
               </h1>
+
               <p className="text-zinc-600 dark:text-zinc-400 mt-2 text-lg max-w-md">
                 Manage doctor profiles, specializations, and department
                 assignments
@@ -88,7 +89,7 @@ export default async function DoctorsPage({
 
                 <Button
                   type="submit"
-                  className="h-14 px-10 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg shadow-blue-500/25 transition-all"
+                  className="text-zinc-100 h-14 px-10 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg shadow-blue-500/25 transition-all"
                 >
                   <Filter className="mr-2 h-5 w-5" />
                   Apply Filter

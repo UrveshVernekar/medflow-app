@@ -187,7 +187,7 @@ export default function DoctorAvailabilityPage() {
               onClick={onManualSave}
               disabled={isSubmitting || !hasUnsavedChanges}
               size="lg"
-              className="h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg shadow-blue-500/25 transition-all active:scale-[0.985]"
+              className="text-zinc-100 h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 shadow-lg shadow-blue-500/25 transition-all active:scale-[0.985]"
             >
               {isSubmitting ? (
                 <>Saving...</>

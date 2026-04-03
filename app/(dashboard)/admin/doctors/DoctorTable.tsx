@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 
 export type Doctor = {
   id: string;
+  name: string;
   email: string;
   specialization: string;
   years_of_experience: number;
@@ -27,6 +28,9 @@ export default function DoctorTable({ doctors }: { doctors: Doctor[] }) {
               Doctor
             </th>
             <th className="px-8 py-5 text-left font-semibold text-zinc-900 dark:text-white">
+              Email
+            </th>
+            <th className="px-8 py-5 text-left font-semibold text-zinc-900 dark:text-white">
               Specialization
             </th>
             <th className="px-8 py-5 text-left font-semibold text-zinc-900 dark:text-white">
@@ -43,6 +47,9 @@ export default function DoctorTable({ doctors }: { doctors: Doctor[] }) {
               key={doc.id}
               className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors"
             >
+              <td className="px-8 py-6 font-medium text-zinc-900 dark:text-white">
+                {doc.name}
+              </td>
               <td className="px-8 py-6 font-medium text-zinc-900 dark:text-white">
                 {doc.email}
               </td>

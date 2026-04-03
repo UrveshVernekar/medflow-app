@@ -33,7 +33,10 @@ export async function createDoctorProfile(
 export async function getDoctors(departmentId?: string) {
   if (departmentId) {
     return db`
-      SELECT d.*, u.email, dep.name as department_name
+      SELECT
+        d.*, u.email,
+        CONCAT(u.first_name, ' ', u.last_name) AS name,
+        dep.name as department_name
       FROM medflow.doctors d
       JOIN medflow.users u ON d.user_id = u.id
       LEFT JOIN medflow.departments dep ON d.department_id = dep.id
@@ -44,7 +47,9 @@ export async function getDoctors(departmentId?: string) {
   }
 
   return db`
-    SELECT d.*, u.email, dep.name as department_name
+    SELECT d.*, u.email,
+    CONCAT(u.first_name, ' ', u.last_name) AS name,
+    dep.name as department_name
     FROM medflow.doctors d
     JOIN medflow.users u ON d.user_id = u.id
     LEFT JOIN medflow.departments dep ON d.department_id = dep.id

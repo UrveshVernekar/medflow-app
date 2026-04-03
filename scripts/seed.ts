@@ -4,7 +4,6 @@ dotenv.config({ path: ".env.local" });
 import { createUser } from "@/features/auth/auth.service";
 
 async function seed() {
-  console.log("DB URL", process.env.DATABASE_URL);
   await createUser("admin@medflow.com", "admin123", "admin");
 
   await createUser("doc1@medflow.com", "doctor123", "doctor");
