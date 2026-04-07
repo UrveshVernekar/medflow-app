@@ -1,11 +1,13 @@
-// app/(dashboard)/patient/appointments/AppointmentsList.tsx
+// app/(dashboard)/doctor/appointments/AppointmentsList.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getPatientAppointments } from "@/features/appointments/appointment.actions";
-import { CalendarDays, Clock, FileText, Stethoscope } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { getDoctorAppointments, confirmAppointmentAction } from "@/features/appointments/appointment.actions";
+import { toast } from "sonner";
+import { Check, CalendarDays, Clock, FileText, UserCircle2 } from "lucide-react";
 
 type Props = {
   type: "upcoming" | "past";
@@ -15,11 +17,12 @@ type Props = {
 export default function AppointmentsList({ type, userId }: Props) {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await getPatientAppointments(userId, type);
+        const data = await getDoctorAppointments(userId, type);
         setAppointments(data || []);
       } catch (err) {
         console.error(err);
@@ -28,22 +31,31 @@ export default function AppointmentsList({ type, userId }: Props) {
       }
     }
     fetchData();
-
-    const handleRefresh = () => {
-      fetchData();
-    };
-
-    window.addEventListener("appointment_booked", handleRefresh);
-    return () => {
-      window.removeEventListener("appointment_booked", handleRefresh);
-    };
   }, [userId, type]);
+
+  const handleConfirm = async (appointmentId: string) => {
+    setConfirmingId(appointmentId);
+    try {
+      await confirmAppointmentAction(appointmentId);
+      toast.success("Appointment successfully confirmed");
+      setAppointments((prev) =>
+        prev.map((apt) =>
+          apt.id === appointmentId ? { ...apt, status: "confirmed" } : apt
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to confirm appointment");
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
         <div className="h-8 w-8 rounded-full border-4 border-zinc-200 border-t-teal-600 animate-spin transition-all" />
-        <p className="text-zinc-500 font-medium">Loading your appointments...</p>
+        <p className="text-zinc-500 font-medium">Loading your schedule...</p>
       </div>
     );
   }
@@ -60,8 +72,8 @@ export default function AppointmentsList({ type, userId }: Props) {
           </p>
           <p className="text-zinc-500 text-sm mt-1 max-w-sm">
             {type === "upcoming" 
-              ? "You don't have any scheduled visits. Book an appointment to get started!" 
-              : "You have no past appointment history to display."}
+              ? "Your schedule is completely clear for the near future." 
+              : "There is no history of past appointments."}
           </p>
         </CardContent>
       </Card>
@@ -100,16 +112,16 @@ export default function AppointmentsList({ type, userId }: Props) {
                 <div className="flex-1 p-6 flex flex-col sm:flex-row justify-between gap-6">
                   
                   <div className="space-y-4 flex-1">
-                    {/* Doctor Overview */}
+                    {/* Patient Overview */}
                     <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-full bg-teal-50 dark:bg-teal-900/30 border border-teal-100 dark:border-teal-800/50 flex items-center justify-center shrink-0">
-                        <Stethoscope className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                      <div className="h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 flex items-center justify-center shrink-0">
+                        <UserCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-lg text-zinc-900 dark:text-zinc-100 line-clamp-1">
-                          Dr. {apt.doctorName || "Unknown Doctor"}
+                          {apt.patientName || "Unknown Patient"}
                         </h3>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">{apt.email || "Doctor"}</p>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">{apt.email}</p>
                       </div>
                     </div>
 
@@ -125,7 +137,7 @@ export default function AppointmentsList({ type, userId }: Props) {
                   </div>
 
                   {/* Actions & Status */}
-                  <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start shrink-0 border-t sm:border-t-0 pt-4 sm:pt-0 border-zinc-100 dark:border-zinc-800 sm:border-l sm:pl-6">
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 border-t sm:border-t-0 pt-4 sm:pt-0 border-zinc-100 dark:border-zinc-800 sm:border-l sm:pl-6">
                     <Badge
                       className={`whitespace-nowrap px-3 py-1 uppercase tracking-wider text-[10px] font-bold ${
                         apt.status === "confirmed"
@@ -136,6 +148,18 @@ export default function AppointmentsList({ type, userId }: Props) {
                     >
                       {apt.status}
                     </Badge>
+
+                    {type === "upcoming" && apt.status === "pending" && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleConfirm(apt.id)}
+                        disabled={confirmingId === apt.id}
+                        className="sm:mt-4 shadow-sm hover:shadow active:scale-95 transition-all bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 dark:text-zinc-900"
+                      >
+                        <Check className="w-4 h-4 mr-1.5" />
+                        {confirmingId === apt.id ? "Confirming..." : "Confirm Visit"}
+                      </Button>
+                    )}
                   </div>
 
                 </div>

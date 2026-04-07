@@ -275,7 +275,7 @@ function getLinks(role: Props["role"]): NavLink[] {
         { label: "Doctors", href: "/admin/doctors", icon: Users },
         { label: "Departments", href: "/admin/departments", icon: Building2 },
         { label: "Patients", href: "/admin/patients", icon: UserCheck },
-        { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+        // { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       ];
     case "doctor":
       return [
@@ -292,7 +292,7 @@ function getLinks(role: Props["role"]): NavLink[] {
           href: "/patient/appointments",
           icon: Calendar,
         },
-        { label: "Medical Records", href: "/patient/records", icon: FileText },
+        // { label: "Medical Records", href: "/patient/records", icon: FileText },
       ];
   }
 }
