@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { HeartPlus, Clock, FileText, Plus } from "lucide-react";
 import { getUpcomingAppointmentsForPatient } from "@/features/appointments/appointment.service";
+import { getPatientDashboardStats } from "@/features/appointments/appointment.actions";
+import PatientDashboardClient from "./PatientDashboardClient";
 
 export default async function PatientDashboard() {
   const session = await auth();
@@ -20,6 +22,7 @@ export default async function PatientDashboard() {
   }
 
   const upcoming = await getUpcomingAppointmentsForPatient(session.user.id!);
+  const stats = await getPatientDashboardStats(session.user.id!);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-zinc-50 to-teal-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 p-6 lg:p-10">
@@ -138,6 +141,10 @@ export default async function PatientDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Analytics UI injected here */}
+        <PatientDashboardClient stats={stats as any} />
+
       </div>
     </div>
   );

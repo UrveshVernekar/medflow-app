@@ -126,6 +126,7 @@ export default function BookAppointmentModal({ userId }: { userId: string }) {
 
       toast.success("Appointment booked successfully! 🎉");
       setOpen(false);
+      window.dispatchEvent(new Event("appointment_booked"));
 
       setStep(1);
       setSelectedDoctor(null);

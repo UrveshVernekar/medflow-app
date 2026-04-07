@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { patientProfileSchema } from "./patient.schema";
+import { getPatientsForDoctor, getAllPatientsAdmin } from "./patient.service";
 
 export async function updatePatientProfile(formData: FormData) {
   const session = await auth();
@@ -25,4 +26,12 @@ export async function updatePatientProfile(formData: FormData) {
   `;
 
   return { success: true };
+}
+
+export async function getDoctorPatientsList(userId: string) {
+  return await getPatientsForDoctor(userId);
+}
+
+export async function getGlobalPatientsList() {
+  return await getAllPatientsAdmin();
 }
