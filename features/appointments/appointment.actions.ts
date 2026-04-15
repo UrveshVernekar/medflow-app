@@ -58,6 +58,14 @@ export async function confirmAppointmentAction(appointmentId: string) {
   return result;
 }
 
+export async function cancelAppointmentAction(appointmentId: string) {
+  const result = await updateAppointmentStatus(appointmentId, "cancelled");
+  revalidatePath("/patient/appointments");
+  revalidatePath("/patient");
+  return result;
+}
+
+
 export async function getDoctorDashboardStats(userId: string) {
   return await getDoctorAnalytics(userId);
 }
