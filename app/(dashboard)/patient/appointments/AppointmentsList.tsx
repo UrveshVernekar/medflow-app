@@ -4,8 +4,21 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getPatientAppointments } from "@/features/appointments/appointment.actions";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { getPatientAppointments, cancelAppointmentAction } from "@/features/appointments/appointment.actions";
 import { CalendarDays, Clock, FileText, Stethoscope } from "lucide-react";
+import { toast } from "sonner";
 
 type Props = {
   type: "upcoming" | "past";
@@ -15,6 +28,20 @@ type Props = {
 export default function AppointmentsList({ type, userId }: Props) {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const handleCancel = async (appointmentId: string) => {
+    setCancellingId(appointmentId);
+    try {
+      await cancelAppointmentAction(appointmentId);
+      toast.success("Appointment cancelled successfully!");
+      window.dispatchEvent(new Event("appointment_booked"));
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel appointment");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -130,12 +157,46 @@ export default function AppointmentsList({ type, userId }: Props) {
                       className={`whitespace-nowrap px-3 py-1 uppercase tracking-wider text-[10px] font-bold ${
                         apt.status === "confirmed"
                           ? "bg-teal-50 text-teal-700 hover:bg-teal-100 border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-900"
+                          : apt.status === "cancelled"
+                          ? "bg-red-50 text-red-700 hover:bg-red-100 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
                           : "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900"
                       }`}
                       variant="outline"
                     >
                       {apt.status}
                     </Badge>
+                    
+                    {type === "upcoming" && apt.status !== "cancelled" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="mt-0 sm:mt-3 h-8 px-4 text-xs font-medium rounded-lg shadow-sm"
+                            disabled={cancellingId === apt.id}
+                          >
+                            {cancellingId === apt.id ? "Cancelling..." : "Cancel"}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="max-w-md">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Cancel Appointment</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to cancel your appointment with Dr. {apt.doctorName || "Unknown"} on {day} {month} at {time}? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Keep Appointment</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleCancel(apt.id)}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Yes, Cancel
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
 
                 </div>
