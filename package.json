@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:init": "npx tsx scripts/init-db.ts",
+    "db:seed": "npx tsx scripts/seed.ts",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
