@@ -31,6 +31,8 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres
       - AUTH_SECRET=medflow-super-secret-jwt-key-32-chars-minimum-for-docker
+      - AUTH_TRUST_HOST=true
+      - NEXTAUTH_URL=http://localhost:3000
       - NODE_ENV=production
     depends_on:
       db:

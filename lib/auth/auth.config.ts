@@ -4,6 +4,7 @@ import { UserRole } from "@/types";
 import { getUserByEmail, verifyPassword } from "@/features/auth/auth.service";
 
 export const authConfig = {
+  trustHost: true,
   providers: [
     Credentials({
       async authorize(credentials) {
