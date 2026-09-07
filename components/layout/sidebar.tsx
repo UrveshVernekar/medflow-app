@@ -1,4 +1,3 @@
-// components/sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -18,8 +17,11 @@ import {
   LogOut,
   Building2,
   Stethoscope,
+  User,
+  HeartPulse,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -30,6 +32,11 @@ import {
 
 type Props = {
   role: "admin" | "doctor" | "patient";
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    role?: string;
+  };
 };
 
 type NavLink = {
@@ -44,7 +51,7 @@ const roleConfig = {
   patient: { title: "Patient Portal", icon: Users },
 };
 
-export function AppSidebar({ role }: Props) {
+export function AppSidebar({ role, user }: Props) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const config = roleConfig[role];
@@ -63,6 +70,15 @@ export function AppSidebar({ role }: Props) {
     }
   };
 
+  const displayName = user?.name || (role === "doctor" ? "Dr. User" : role === "admin" ? "Administrator" : "Patient");
+  const displayEmail = user?.email || "user@medflow.com";
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <>
       {/* Mobile Drawer */}
@@ -79,7 +95,7 @@ export function AppSidebar({ role }: Props) {
 
         <SheetContent
           side="left"
-          className="w-72 p-0 border-r bg-white/95 dark:bg-zinc-950/95 backdrop-blur-2xl"
+          className="w-72 p-0 border-r bg-white/95 dark:bg-zinc-950/95 backdrop-blur-2xl flex flex-col h-full"
         >
           <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <SheetDescription className="sr-only">Main navigation</SheetDescription>
@@ -100,53 +116,58 @@ export function AppSidebar({ role }: Props) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-5">
-            <div className="space-y-1.5">
-              {links.map((link) => {
-                const active = isActive(link.href);
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`
-                      flex items-center gap-4 rounded-2xl px-5 py-4 text-[15px] font-medium transition-all
-                      ${
-                        active
-                          ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
-                          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-white"
-                      }
-                    `}
-                  >
-                    <link.icon
-                      className={`h-5 w-5 flex-shrink-0 ${active ? "text-blue-600 dark:text-blue-400" : ""}`}
-                    />
-                    <span>{link.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+          <nav className="flex-1 overflow-y-auto p-5 space-y-1.5">
+            {links.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`
+                    flex items-center gap-4 rounded-2xl px-5 py-4 text-[15px] font-medium transition-all
+                    ${
+                      active
+                        ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400"
+                        : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-white"
+                    }
+                  `}
+                >
+                  <link.icon
+                    className={`h-5 w-5 flex-shrink-0 ${active ? "text-blue-600 dark:text-blue-400" : ""}`}
+                  />
+                  <span>{link.label}</span>
+                </Link>
+              );
+            })}
           </nav>
 
-          {/* Footer */}
-          <div className="border-t border-zinc-100 dark:border-zinc-800 mt-auto">
-            <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-center">
-              <ThemeToggle />
-            </div>
+          {/* User Identity Card & Footer */}
+          <div className="border-t border-zinc-100 dark:border-zinc-800 p-4 space-y-3 mt-auto">
+            <Link
+              href="/profile"
+              className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 flex items-center gap-3 hover:border-blue-300 dark:hover:border-blue-900 transition-all"
+            >
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-teal-600 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{displayName}</p>
+                <p className="text-xs text-zinc-500 truncate">{displayEmail}</p>
+              </div>
+              <Badge className="capitalize text-[10px] px-2 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-none shrink-0">
+                {role}
+              </Badge>
+            </Link>
 
-            <div className="p-4">
+            <div className="flex items-center justify-between px-2">
+              <ThemeToggle />
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center justify-center gap-3.5 rounded-2xl px-5 py-4 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 hover:text-red-700 transition-all"
+                className="flex items-center gap-2 text-xs font-semibold text-red-600 hover:text-red-700 transition-all p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/50"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4" />
                 <span>Logout</span>
               </button>
-            </div>
-
-            <div className="px-6 pb-6 text-center">
-              <p className="text-[10px] text-zinc-400 dark:text-zinc-600 tracking-widest">
-                © {new Date().getFullYear()} MedFlow
-              </p>
             </div>
           </div>
         </SheetContent>
@@ -161,7 +182,7 @@ export function AppSidebar({ role }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 px-6 py-7 shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-600 to-teal-600 flex items-center justify-center shadow-lg">
+            <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-600 to-teal-600 flex items-center justify-center shadow-lg shrink-0">
               <Stethoscope className="h-6 w-6 text-white" />
             </div>
             {!collapsed && (
@@ -190,66 +211,75 @@ export function AppSidebar({ role }: Props) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800">
-          <div className="space-y-1.5">
-            {links.map((link) => {
-              const active = isActive(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`
-                    group flex items-center gap-4 rounded-2xl px-5 py-4 text-[15px] font-medium transition-all duration-200
-                    hover:bg-zinc-100 dark:hover:bg-zinc-900
-                    ${
-                      active
-                        ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 shadow-sm ring-1 ring-blue-200 dark:ring-blue-900"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                    }
-                  `}
-                  title={collapsed ? link.label : undefined}
-                >
-                  <link.icon
-                    className={`h-5 w-5 flex-shrink-0 transition-colors ${
-                      active
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "group-hover:text-zinc-900 dark:group-hover:text-white"
-                    }`}
-                  />
-                  {!collapsed && <span>{link.label}</span>}
-                </Link>
-              );
-            })}
-          </div>
+        <nav className="flex-1 overflow-y-auto p-2.5 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800 space-y-1.5">
+          {links.map((link) => {
+            const active = isActive(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`
+                  group flex items-center gap-4 rounded-2xl px-5 py-3.5 text-[15px] font-medium transition-all duration-200
+                  hover:bg-zinc-100 dark:hover:bg-zinc-900
+                  ${
+                    active
+                      ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 shadow-sm ring-1 ring-blue-200 dark:ring-blue-900"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                  }
+                `}
+                title={collapsed ? link.label : undefined}
+              >
+                <link.icon
+                  className={`h-5 w-5 flex-shrink-0 transition-colors ${
+                    active
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "group-hover:text-zinc-900 dark:group-hover:text-white"
+                  }`}
+                />
+                {!collapsed && <span>{link.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* Footer Section */}
-        <div className="border-t border-zinc-100 dark:border-zinc-800 mt-auto">
-          {/* Theme Toggle */}
-          <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800">
-            <div className="flex justify-center">
-              <ThemeToggle />
+        {/* User Identity Footer Section */}
+        <div className="border-t border-zinc-100 dark:border-zinc-800 p-3 mt-auto space-y-2">
+          {/* User Profile Card */}
+          <Link
+            href="/profile"
+            className={`flex items-center gap-3 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 hover:border-blue-300 dark:hover:border-blue-900 transition-all ${
+              collapsed ? "justify-center p-2" : ""
+            }`}
+            title={collapsed ? `${displayName} (${role})` : undefined}
+          >
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-teal-600 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-md">
+              {initials}
             </div>
-          </div>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-1">
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{displayName}</p>
+                  <Badge className="capitalize text-[9px] px-1.5 py-0 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-none shrink-0 font-bold">
+                    {role}
+                  </Badge>
+                </div>
+                <p className="text-xs text-zinc-500 truncate mt-0.5">{displayEmail}</p>
+              </div>
+            )}
+          </Link>
 
-          {/* Logout */}
-          <div className="p-4">
+          {/* Theme & Logout */}
+          <div className={`flex items-center justify-between px-2 pt-1 ${collapsed ? "flex-col gap-2" : ""}`}>
+            <ThemeToggle />
             <button
               onClick={handleLogout}
-              className="flex w-full items-center justify-center gap-3.5 rounded-2xl px-5 py-4 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 hover:text-red-700 transition-all active:scale-[0.985]"
+              className="flex items-center justify-center gap-2 rounded-xl p-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all"
+              title={collapsed ? "Logout" : undefined}
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4" />
               {!collapsed && <span>Logout</span>}
             </button>
           </div>
-
-          {!collapsed && (
-            <div className="px-6 pb-6 text-center">
-              <p className="text-[10px] text-zinc-400 dark:text-zinc-600 tracking-widest">
-                © {new Date().getFullYear()} MedFlow • Healthcare Platform
-              </p>
-            </div>
-          )}
         </div>
       </aside>
     </>
@@ -265,6 +295,7 @@ function getLinks(role: Props["role"]): NavLink[] {
         { label: "Doctors", href: "/admin/doctors", icon: Users },
         { label: "Departments", href: "/admin/departments", icon: Building2 },
         { label: "Patients", href: "/admin/patients", icon: UserCheck },
+        { label: "My Profile", href: "/profile", icon: User },
       ];
     case "doctor":
       return [
@@ -272,15 +303,14 @@ function getLinks(role: Props["role"]): NavLink[] {
         { label: "Appointments", href: "/doctor/appointments", icon: Calendar },
         { label: "Availability", href: "/doctor/availability", icon: Clock },
         { label: "My Patients", href: "/doctor/patients", icon: Users },
+        { label: "My Profile", href: "/profile", icon: User },
       ];
     case "patient":
       return [
         { label: "Dashboard", href: "/patient", icon: LayoutDashboard },
-        {
-          label: "Appointments",
-          href: "/patient/appointments",
-          icon: Calendar,
-        },
+        { label: "Appointments", href: "/patient/appointments", icon: Calendar },
+        { label: "Medical Records", href: "/patient/medical-records", icon: HeartPulse },
+        { label: "My Profile", href: "/profile", icon: User },
       ];
   }
 }

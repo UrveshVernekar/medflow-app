@@ -6,6 +6,7 @@ import {
   integer,
   timestamp,
   time,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -108,6 +109,95 @@ export const auditLogs = medflowSchema.table("audit_logs", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+// 8. Patient Allergies Table
+export const patientAllergies = medflowSchema.table("patient_allergies", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patients.id, { onDelete: "cascade" }),
+  allergen: varchar("allergen", { length: 255 }).notNull(),
+  severity: varchar("severity", { length: 50 }).notNull().default("moderate"),
+  reaction: text("reaction"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+// 9. Prescriptions Table
+export const prescriptions = medflowSchema.table("prescriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  appointmentId: uuid("appointment_id").references(() => appointments.id, {
+    onDelete: "set null",
+  }),
+  doctorId: uuid("doctor_id")
+    .notNull()
+    .references(() => doctors.id, { onDelete: "cascade" }),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patients.id, { onDelete: "cascade" }),
+  diagnosis: text("diagnosis").notNull(),
+  notes: text("notes"),
+  status: varchar("status", { length: 50 }).notNull().default("active"),
+  issuedAt: timestamp("issued_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// 10. Prescription Items Table
+export const prescriptionItems = medflowSchema.table("prescription_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  prescriptionId: uuid("prescription_id")
+    .notNull()
+    .references(() => prescriptions.id, { onDelete: "cascade" }),
+  medicationName: varchar("medication_name", { length: 255 }).notNull(),
+  dosage: varchar("dosage", { length: 100 }).notNull(),
+  frequency: varchar("frequency", { length: 100 }).notNull(),
+  duration: varchar("duration", { length: 100 }).notNull(),
+  instructions: text("instructions"),
+});
+
+// 11. Hospital Wards Table
+export const wards = medflowSchema.table("wards", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  wardType: varchar("ward_type", { length: 100 }).notNull(),
+  totalBeds: integer("total_beds").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+// 12. Hospital Beds Table
+export const beds = medflowSchema.table("beds", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  wardId: uuid("ward_id")
+    .notNull()
+    .references(() => wards.id, { onDelete: "cascade" }),
+  bedNumber: varchar("bed_number", { length: 50 }).notNull(),
+  status: varchar("status", { length: 50 }).notNull().default("available"),
+  assignedPatientId: uuid("assigned_patient_id").references(() => patients.id, {
+    onDelete: "set null",
+  }),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// 13. Patient Vital Signs Table
+export const vitalSigns = medflowSchema.table("vital_signs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  patientId: uuid("patient_id")
+    .notNull()
+    .references(() => patients.id, { onDelete: "cascade" }),
+  recordedByUserId: uuid("recorded_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  bloodPressureSystolic: integer("blood_pressure_systolic").notNull(),
+  bloodPressureDiastolic: integer("blood_pressure_diastolic").notNull(),
+  heartRate: integer("heart_rate").notNull(),
+  spO2: integer("spo2").notNull(),
+  temperatureCelsius: numeric("temperature_celsius", { precision: 4, scale: 1 }).notNull(),
+  respiratoryRate: integer("respiratory_rate"),
+  weightKg: numeric("weight_kg", { precision: 5, scale: 2 }),
+  heightCm: numeric("height_cm", { precision: 5, scale: 2 }),
+  bmi: numeric("bmi", { precision: 4, scale: 1 }),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow(),
+});
+
 // --- RELATIONS ---
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -136,6 +226,7 @@ export const doctorsRelations = relations(doctors, ({ one, many }) => ({
   }),
   availability: many(doctorAvailability),
   appointments: many(appointments),
+  prescriptions: many(prescriptions),
 }));
 
 export const doctorAvailabilityRelations = relations(
@@ -154,6 +245,9 @@ export const patientsRelations = relations(patients, ({ one, many }) => ({
     references: [users.id],
   }),
   appointments: many(appointments),
+  allergies: many(patientAllergies),
+  prescriptions: many(prescriptions),
+  vitalSigns: many(vitalSigns),
 }));
 
 export const appointmentsRelations = relations(appointments, ({ one }) => ({
@@ -164,5 +258,70 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
   doctor: one(doctors, {
     fields: [appointments.doctorId],
     references: [doctors.id],
+  }),
+}));
+
+export const patientAllergiesRelations = relations(
+  patientAllergies,
+  ({ one }) => ({
+    patient: one(patients, {
+      fields: [patientAllergies.patientId],
+      references: [patients.id],
+    }),
+  }),
+);
+
+export const prescriptionsRelations = relations(
+  prescriptions,
+  ({ one, many }) => ({
+    doctor: one(doctors, {
+      fields: [prescriptions.doctorId],
+      references: [doctors.id],
+    }),
+    patient: one(patients, {
+      fields: [prescriptions.patientId],
+      references: [patients.id],
+    }),
+    appointment: one(appointments, {
+      fields: [prescriptions.appointmentId],
+      references: [appointments.id],
+    }),
+    items: many(prescriptionItems),
+  }),
+);
+
+export const prescriptionItemsRelations = relations(
+  prescriptionItems,
+  ({ one }) => ({
+    prescription: one(prescriptions, {
+      fields: [prescriptionItems.prescriptionId],
+      references: [prescriptions.id],
+    }),
+  }),
+);
+
+export const wardsRelations = relations(wards, ({ many }) => ({
+  beds: many(beds),
+}));
+
+export const bedsRelations = relations(beds, ({ one }) => ({
+  ward: one(wards, {
+    fields: [beds.wardId],
+    references: [wards.id],
+  }),
+  assignedPatient: one(patients, {
+    fields: [beds.assignedPatientId],
+    references: [patients.id],
+  }),
+}));
+
+export const vitalSignsRelations = relations(vitalSigns, ({ one }) => ({
+  patient: one(patients, {
+    fields: [vitalSigns.patientId],
+    references: [patients.id],
+  }),
+  recordedBy: one(users, {
+    fields: [vitalSigns.recordedByUserId],
+    references: [users.id],
   }),
 }));

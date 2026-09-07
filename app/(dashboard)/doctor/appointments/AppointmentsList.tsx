@@ -9,6 +9,9 @@ import { getDoctorAppointments, confirmAppointmentAction } from "@/features/appo
 import { toast } from "sonner";
 import { Check, CalendarDays, Clock, FileText, UserCircle2 } from "lucide-react";
 
+import CreatePrescriptionModal from "@/components/prescriptions/CreatePrescriptionModal";
+import RecordVitalsModal from "@/components/vitals/RecordVitalsModal";
+
 type Props = {
   type: "upcoming" | "past";
   userId: string;
@@ -18,6 +21,7 @@ export default function AppointmentsList({ type, userId }: Props) {
   const [appointments, setAppointments] = useState<
     Array<{
       id: string;
+      patientId?: string;
       appointment_datetime: Date | string;
       status: string | null;
       patientName?: string;
@@ -168,6 +172,22 @@ export default function AppointmentsList({ type, userId }: Props) {
                         <Check className="w-4 h-4 mr-1.5" />
                         {confirmingId === apt.id ? "Confirming..." : "Confirm Visit"}
                       </Button>
+                    )}
+
+                    {apt.patientId && (
+                      <div className="flex flex-col gap-2 mt-3 w-full sm:w-auto">
+                        <CreatePrescriptionModal
+                          patientId={apt.patientId}
+                          patientName={apt.patientName || "Patient"}
+                          appointmentId={apt.id}
+                          triggerText="Issue Prescription"
+                        />
+                        <RecordVitalsModal
+                          patientId={apt.patientId}
+                          patientName={apt.patientName || "Patient"}
+                          triggerText="Record Vitals"
+                        />
+                      </div>
                     )}
                   </div>
 

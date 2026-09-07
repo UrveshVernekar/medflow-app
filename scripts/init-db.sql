@@ -88,3 +88,74 @@ CREATE TABLE IF NOT EXISTS medflow.audit_logs (
   ip_address VARCHAR(45),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Patient Allergies Table
+CREATE TABLE IF NOT EXISTS medflow.patient_allergies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES medflow.patients(id) ON DELETE CASCADE,
+  allergen VARCHAR(255) NOT NULL,
+  severity VARCHAR(50) NOT NULL DEFAULT 'moderate',
+  reaction TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Prescriptions Table
+CREATE TABLE IF NOT EXISTS medflow.prescriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  appointment_id UUID REFERENCES medflow.appointments(id) ON DELETE SET NULL,
+  doctor_id UUID NOT NULL REFERENCES medflow.doctors(id) ON DELETE CASCADE,
+  patient_id UUID NOT NULL REFERENCES medflow.patients(id) ON DELETE CASCADE,
+  diagnosis TEXT NOT NULL,
+  notes TEXT,
+  status VARCHAR(50) NOT NULL DEFAULT 'active',
+  issued_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Prescription Items Table
+CREATE TABLE IF NOT EXISTS medflow.prescription_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  prescription_id UUID NOT NULL REFERENCES medflow.prescriptions(id) ON DELETE CASCADE,
+  medication_name VARCHAR(255) NOT NULL,
+  dosage VARCHAR(100) NOT NULL,
+  frequency VARCHAR(100) NOT NULL,
+  duration VARCHAR(100) NOT NULL,
+  instructions TEXT
+);
+
+-- Hospital Wards Table
+CREATE TABLE IF NOT EXISTS medflow.wards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  ward_type VARCHAR(100) NOT NULL,
+  total_beds INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Hospital Beds Table
+CREATE TABLE IF NOT EXISTS medflow.beds (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ward_id UUID NOT NULL REFERENCES medflow.wards(id) ON DELETE CASCADE,
+  bed_number VARCHAR(50) NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'available',
+  assigned_patient_id UUID REFERENCES medflow.patients(id) ON DELETE SET NULL,
+  assigned_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Patient Vital Signs Table
+CREATE TABLE IF NOT EXISTS medflow.vital_signs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES medflow.patients(id) ON DELETE CASCADE,
+  recorded_by_user_id UUID REFERENCES medflow.users(id) ON DELETE SET NULL,
+  blood_pressure_systolic INT NOT NULL,
+  blood_pressure_diastolic INT NOT NULL,
+  heart_rate INT NOT NULL,
+  spo2 INT NOT NULL,
+  temperature_celsius NUMERIC(4, 1) NOT NULL,
+  respiratory_rate INT,
+  weight_kg NUMERIC(5, 2),
+  height_cm NUMERIC(5, 2),
+  bmi NUMERIC(4, 1),
+  recorded_at TIMESTAMPTZ DEFAULT NOW()
+);
