@@ -103,6 +103,9 @@ async function seed() {
       `;
       const userId = uRes[0].id;
       const deptId = departmentMap.get(doc.dept);
+      if (!deptId) {
+        throw new Error(`Department ${doc.dept} not found`);
+      }
 
       // Create Doctor Profile
       const dRes = await sql`
