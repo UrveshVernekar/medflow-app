@@ -76,3 +76,15 @@ CREATE TABLE IF NOT EXISTS medflow.appointments (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   deleted_at TIMESTAMPTZ
 );
+
+-- PHI Audit Logs Table
+CREATE TABLE IF NOT EXISTS medflow.audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID,
+  action VARCHAR(100) NOT NULL,
+  resource VARCHAR(100) NOT NULL,
+  resource_id VARCHAR(255),
+  details TEXT,
+  ip_address VARCHAR(45),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

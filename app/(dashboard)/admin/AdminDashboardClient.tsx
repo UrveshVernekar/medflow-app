@@ -23,7 +23,7 @@ type Stats = {
   departmentDistribution: { name: string; value: number }[];
 };
 
-export default function AdminDashboardClient({ stats }: { stats: Stats }) {
+export default function AdminDashboardClient({ stats }: { stats: Stats | null }) {
   const safeStats = stats || {
     totalDoctors: 0,
     totalPatients: 0,

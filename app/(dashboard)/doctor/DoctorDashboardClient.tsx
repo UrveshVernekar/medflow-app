@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Calendar, Clock, Activity } from "lucide-react";
+import { Users, Calendar, Clock } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -22,7 +22,7 @@ type Stats = {
   appointmentsByDay: { date: string; appointments: number }[];
 };
 
-export default function DoctorDashboardClient({ stats }: { stats: Stats }) {
+export default function DoctorDashboardClient({ stats }: { stats: Stats | null }) {
   // Safe defaults if API hasn't resolved
   const safeStats = stats || {
     totalUpcoming: 0,

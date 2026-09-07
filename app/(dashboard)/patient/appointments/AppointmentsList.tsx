@@ -25,8 +25,17 @@ type Props = {
   userId: string;
 };
 
+interface PatientAppointment {
+  id: string;
+  appointment_datetime: string;
+  status: string;
+  notes?: string | null;
+  doctorName?: string;
+  email?: string;
+}
+
 export default function AppointmentsList({ type, userId }: Props) {
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<PatientAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
@@ -36,8 +45,9 @@ export default function AppointmentsList({ type, userId }: Props) {
       await cancelAppointmentAction(appointmentId);
       toast.success("Appointment cancelled successfully!");
       window.dispatchEvent(new Event("appointment_booked"));
-    } catch (err: any) {
-      toast.error(err.message || "Failed to cancel appointment");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to cancel appointment";
+      toast.error(message);
     } finally {
       setCancellingId(null);
     }
@@ -47,7 +57,7 @@ export default function AppointmentsList({ type, userId }: Props) {
     async function fetchData() {
       try {
         const data = await getPatientAppointments(userId, type);
-        setAppointments(data || []);
+        setAppointments((data as PatientAppointment[]) || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -145,7 +155,7 @@ export default function AppointmentsList({ type, userId }: Props) {
                       <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3.5 text-sm border border-zinc-100 dark:border-zinc-800 relative z-10 flex gap-2.5">
                         <FileText className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
                         <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed italic">
-                          "{apt.notes}"
+                          &quot;{apt.notes}&quot;
                         </p>
                       </div>
                     )}

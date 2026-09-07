@@ -18,15 +18,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 
+interface DepartmentItem {
+  id: string;
+  name: string;
+}
+
+type CreateDoctorState = {
+  success?: boolean;
+  error?: string;
+} | null;
+
 export default function CreateDoctorDialog({
   departments,
 }: {
-  departments: any[];
+  departments: DepartmentItem[];
 }) {
   const [open, setOpen] = useState(false);
 
-  const [state, formAction, isPending] = useActionState(
-    async (_: any, formData: FormData) => {
+  const [state, formAction, isPending] = useActionState<CreateDoctorState, FormData>(
+    async (_: CreateDoctorState, formData: FormData) => {
       const result = await createDoctorAction(formData);
       return result;
     },
@@ -38,9 +48,7 @@ export default function CreateDoctorDialog({
       toast.success("Doctor created successfully!", {
         description: "The new doctor profile has been added.",
       });
-      setOpen(false);
-      // Refresh data without full reload
-      window.location.reload(); // You can replace this with revalidatePath later
+      window.location.reload();
     } else if (state?.error) {
       toast.error("Failed to create doctor", {
         description: state.error,
@@ -119,7 +127,7 @@ export default function CreateDoctorDialog({
                   className="h-14 w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 text-base focus-visible:border-blue-600 focus-visible:ring-blue-600/30"
                 >
                   <option value="">Select Department</option>
-                  {departments.map((d: any) => (
+                  {departments.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
                     </option>

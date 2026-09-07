@@ -1,5 +1,4 @@
 // DoctorTable.tsx
-import { Card } from "@/components/ui/card";
 
 export type Doctor = {
   id: string;

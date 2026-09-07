@@ -31,14 +31,14 @@ export default async function DoctorPage() {
               </h1>
 
               <p className="text-zinc-600 dark:text-zinc-400 mt-2 text-lg max-w-md">
-                Welcome back, Dr. {session.user.name?.split(" ")[0] || "Doctor"}. Here is what's happening.
+                Welcome back, Dr. {session.user.name?.split(" ")[0] || "Doctor"}. Here is what&apos;s happening.
               </p>
             </div>
           </div>
         </div>
 
         {/* Client Component rendering the Graphs */}
-        <DoctorDashboardClient stats={stats as any} />
+        <DoctorDashboardClient stats={stats} />
 
       </div>
     </div>

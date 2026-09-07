@@ -24,13 +24,13 @@ export async function getMyAvailabilityAction(): Promise<ActionState> {
   try {
     const data = await getDoctorAvailability(session.user.id);
     return { success: true, slots: data.slots };
-  } catch (error: any) {
-    console.error("getMyAvailabilityAction ERROR:", error.message);
-    return { error: error.message || "Failed to fetch availability" };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch availability";
+    console.error("getMyAvailabilityAction ERROR:", message);
+    return { error: message };
   }
 }
 
-// features/doctors/doctor-availability.actions.ts
 export async function updateAvailabilityAction(
   prevState: ActionState,
   formData: FormData,
@@ -47,13 +47,13 @@ export async function updateAvailabilityAction(
       return { error: "No slots data received" };
     }
 
-    let rawSlots = JSON.parse(slotsString);
+    const rawSlots: AvailabilitySlot[] = JSON.parse(slotsString);
 
-    // === IMPORTANT FIX: Normalize time format (remove seconds if present) ===
-    const normalizedSlots = rawSlots.map((slot: any) => ({
+    // Normalize time format (remove seconds if present)
+    const normalizedSlots = rawSlots.map((slot) => ({
       dayOfWeek: slot.dayOfWeek,
-      startTime: slot.startTime.split(":").slice(0, 2).join(":"), // "09:00:00" → "09:00"
-      endTime: slot.endTime.split(":").slice(0, 2).join(":"), // "17:00:00" → "17:00"
+      startTime: String(slot.startTime).split(":").slice(0, 2).join(":"),
+      endTime: String(slot.endTime).split(":").slice(0, 2).join(":"),
     }));
 
     // Validate the normalized data
@@ -70,10 +70,8 @@ export async function updateAvailabilityAction(
     revalidatePath("/doctor/availability");
 
     return { success: true };
-  } catch (error: any) {
-    return {
-      error:
-        error.message || "Failed to update availability. Please try again.",
-    };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to update availability. Please try again.";
+    return { error: message };
   }
 }

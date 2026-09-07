@@ -2,7 +2,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { ListPlus } from "lucide-react";
 import BookAppointmentModal from "./BookAppointmentModal";
 import AppointmentsList from "./AppointmentsList";

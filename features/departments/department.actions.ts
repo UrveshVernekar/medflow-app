@@ -6,7 +6,6 @@ import { auth } from "@/lib/auth";
 import { departmentSchema } from "./department.schema";
 import {
   createDepartment,
-  updateDepartment,
   deleteDepartment,
 } from "./department.service";
 

@@ -228,7 +228,7 @@ export default function RegisterPage() {
                       <button
                         key={value}
                         type="button"
-                        onClick={() => setRole(value as any)}
+                        onClick={() => setRole(value as "admin" | "doctor" | "patient")}
                         disabled={isSubmitting}
                         className={`group p-4 rounded-2xl border transition-all duration-200 flex flex-col items-center gap-3 hover:shadow-md ${
                           role === value

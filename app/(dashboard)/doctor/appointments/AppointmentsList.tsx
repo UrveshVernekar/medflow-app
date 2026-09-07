@@ -15,7 +15,16 @@ type Props = {
 };
 
 export default function AppointmentsList({ type, userId }: Props) {
-  const [appointments, setAppointments] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<
+    Array<{
+      id: string;
+      appointment_datetime: Date | string;
+      status: string | null;
+      patientName?: string;
+      email?: string;
+      notes?: string | null;
+    }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
@@ -130,7 +139,7 @@ export default function AppointmentsList({ type, userId }: Props) {
                       <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3.5 text-sm border border-zinc-100 dark:border-zinc-800 relative z-10 flex gap-2.5">
                         <FileText className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
                         <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed italic">
-                          "{apt.notes}"
+                          &quot;{apt.notes}&quot;
                         </p>
                       </div>
                     )}

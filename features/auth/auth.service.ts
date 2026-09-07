@@ -1,14 +1,22 @@
 import bcrypt from "bcrypt";
 import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq, isNull, and } from "drizzle-orm";
 
 export async function getUserByEmail(email: string) {
-  const result = await db`
-    SELECT * FROM medflow.users
-    WHERE email = ${email}
-    AND deleted_at IS NULL
-    LIMIT 1
-  `;
-  return result[0] ?? null;
+  const result = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.email, email), isNull(users.deletedAt)))
+    .limit(1);
+
+  if (!result[0]) return null;
+
+  // Map passwordHash to password_hash for backward compatibility with authConfig
+  return {
+    ...result[0],
+    password_hash: result[0].passwordHash,
+  };
 }
 
 export async function createUser(
@@ -18,11 +26,18 @@ export async function createUser(
 ) {
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const result = await db`
-    INSERT INTO medflow.users (email, password_hash, role)
-    VALUES (${email}, ${hashedPassword}, ${role})
-    RETURNING id, email, role
-  `;
+  const result = await db
+    .insert(users)
+    .values({
+      email,
+      passwordHash: hashedPassword,
+      role,
+    })
+    .returning({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+    });
 
   return result[0];
 }

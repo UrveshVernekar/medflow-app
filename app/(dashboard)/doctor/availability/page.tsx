@@ -38,7 +38,7 @@ export default function DoctorAvailabilityPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [autoSave, setAutoSave] = useState(true); // Enabled by default in modern UIs
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
 
   const form = useForm<AvailabilityFormValues>({
     resolver: zodResolver(availabilitySchema),
@@ -115,7 +115,7 @@ export default function DoctorAvailabilityPage() {
     } else {
       form.setValue("slots", [
         ...current,
-        { dayOfWeek: dayOfWeek as any, startTime: "09:00", endTime: "17:00" },
+        { dayOfWeek: dayOfWeek as 0 | 1 | 2 | 3 | 4 | 5 | 6, startTime: "09:00", endTime: "17:00" },
       ]);
     }
   };
