@@ -40,7 +40,7 @@ export async function getPatientsForDoctor(userId: string) {
       patients.gender,
       patients.contactNumber,
     )
-    .orderBy(desc(sql`last_visit`));
+    .orderBy(desc(sql`max(${appointments.appointmentDatetime})`));
 }
 
 export async function getAllPatientsAdmin() {

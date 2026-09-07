@@ -218,6 +218,7 @@ export async function getUpcomingAppointmentsForDoctor(userId: string) {
   const result = await db
     .select({
       id: appointments.id,
+      patientId: patients.id,
       appointment_datetime: sql<string>`to_char(${appointments.appointmentDatetime}, 'YYYY-MM-DD HH24:MI:SS')`,
       status: appointments.status,
       notes: appointments.notes,
@@ -241,6 +242,7 @@ export async function getUpcomingAppointmentsForDoctor(userId: string) {
 
   return result.map((r) => ({
     id: r.id,
+    patientId: r.patientId,
     appointment_datetime: r.appointment_datetime,
     status: r.status,
     notes: r.notes,
@@ -255,6 +257,7 @@ export async function getPastAppointmentsForDoctor(userId: string) {
   const result = await db
     .select({
       id: appointments.id,
+      patientId: patients.id,
       appointment_datetime: sql<string>`to_char(${appointments.appointmentDatetime}, 'YYYY-MM-DD HH24:MI:SS')`,
       status: appointments.status,
       notes: appointments.notes,
@@ -279,6 +282,7 @@ export async function getPastAppointmentsForDoctor(userId: string) {
 
   return result.map((r) => ({
     id: r.id,
+    patientId: r.patientId,
     appointment_datetime: r.appointment_datetime,
     status: r.status,
     notes: r.notes,
