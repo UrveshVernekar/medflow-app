@@ -87,7 +87,7 @@ export default async function PatientDashboard() {
             <CardContent>
               {upcoming.length > 0 ? (
                 <div className="space-y-4">
-                  {upcoming.slice(0, 2).map((apt: any) => (
+                  {upcoming.slice(0, 2).map((apt) => (
                     <div key={apt.id} className="flex justify-between text-sm">
                       <div>
                         <p className="font-medium">{apt.doctorName}</p>
@@ -143,7 +143,7 @@ export default async function PatientDashboard() {
         </div>
 
         {/* Analytics UI injected here */}
-        <PatientDashboardClient stats={stats as any} />
+        <PatientDashboardClient stats={stats} />
 
       </div>
     </div>

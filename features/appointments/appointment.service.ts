@@ -1,40 +1,67 @@
-// features/appointments/appointment.service.ts
 import { db } from "@/lib/db";
+import {
+  doctors,
+  users,
+  departments,
+  doctorAvailability,
+  appointments,
+  patients,
+} from "@/lib/db/schema";
+import { eq, isNull, and, sql, gte, lt, desc, asc } from "drizzle-orm";
 
 export async function getDoctorsForBooking() {
-  return db`
-    SELECT 
-      d.id,
-      CONCAT(u.first_name, ' ', u.last_name) AS name,
-      u.email,
-      d.specialization,
-      dep.name AS department,
-      d.years_of_experience AS "yearsOfExperience"
-    FROM medflow.doctors d
-    LEFT JOIN medflow.users u ON d.user_id = u.id
-    LEFT JOIN medflow.departments dep ON d.department_id = dep.id
-    WHERE d.deleted_at IS NULL
-    ORDER BY d.specialization ASC
-  `;
+  const result = await db
+    .select({
+      id: doctors.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      specialization: doctors.specialization,
+      department: departments.name,
+      yearsOfExperience: doctors.yearsOfExperience,
+    })
+    .from(doctors)
+    .leftJoin(users, eq(doctors.userId, users.id))
+    .leftJoin(departments, eq(doctors.departmentId, departments.id))
+    .where(isNull(doctors.deletedAt))
+    .orderBy(asc(doctors.specialization));
+
+  return result.map((d) => ({
+    id: d.id,
+    name: [d.firstName, d.lastName].filter(Boolean).join(" ") || "Doctor",
+    email: d.email,
+    specialization: d.specialization,
+    department: d.department,
+    yearsOfExperience: d.yearsOfExperience,
+  }));
 }
 
 export async function getAvailableSlotsForDoctor(
   doctorId: string,
   dateStr: string,
 ) {
-  const availabilityResult = await db`
-    SELECT start_time, end_time
-    FROM medflow.doctor_availability
-    WHERE doctor_id = ${doctorId}
-      AND day_of_week = EXTRACT(DOW FROM ${dateStr}::date)
-  `;
+  const dateObj = new Date(dateStr);
+  const dayOfWeek = dateObj.getDay();
+
+  const availabilityResult = await db
+    .select({
+      startTime: doctorAvailability.startTime,
+      endTime: doctorAvailability.endTime,
+    })
+    .from(doctorAvailability)
+    .where(
+      and(
+        eq(doctorAvailability.doctorId, doctorId),
+        eq(doctorAvailability.dayOfWeek, dayOfWeek),
+      ),
+    );
 
   if (availabilityResult.length === 0) return [];
 
-  const { start_time, end_time } = availabilityResult[0];
+  const { startTime: start_time, endTime: end_time } = availabilityResult[0];
 
   const slots: string[] = [];
-  let current = new Date(`${dateStr}T${start_time}`);
+  const current = new Date(`${dateStr}T${start_time}`);
   const end = new Date(`${dateStr}T${end_time}`);
 
   while (current < end) {
@@ -42,17 +69,22 @@ export async function getAvailableSlotsForDoctor(
     current.setMinutes(current.getMinutes() + 30);
   }
 
-  const bookedResult = await db`
-    SELECT appointment_datetime
-    FROM medflow.appointments
-    WHERE doctor_id = ${doctorId}
-      AND appointment_datetime::date = ${dateStr}::date
-      AND deleted_at IS NULL
-  `;
+  const bookedResult = await db
+    .select({
+      appointmentDatetime: appointments.appointmentDatetime,
+    })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.doctorId, doctorId),
+        sql`DATE(${appointments.appointmentDatetime}) = ${dateStr}::date`,
+        isNull(appointments.deletedAt),
+      ),
+    );
 
   const bookedTimes = new Set(
-    bookedResult.map((b: any) => {
-      const d = new Date(b.appointment_datetime);
+    bookedResult.map((b) => {
+      const d = new Date(b.appointmentDatetime);
       return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
     }),
   );
@@ -61,13 +93,12 @@ export async function getAvailableSlotsForDoctor(
 }
 
 async function getPatientIdByUserId(userId: string) {
-  const result = await db`
-    SELECT id 
-    FROM medflow.patients 
-    WHERE user_id = ${userId} 
-    AND deleted_at IS NULL
-    LIMIT 1
-  `;
+  const result = await db
+    .select({ id: patients.id })
+    .from(patients)
+    .where(and(eq(patients.userId, userId), isNull(patients.deletedAt)))
+    .limit(1);
+
   if (result.length === 0) {
     throw new Error(
       "Patient profile not found. Please complete your profile first.",
@@ -84,196 +115,296 @@ export async function createAppointment(data: {
 }) {
   const patientId = await getPatientIdByUserId(data.userId);
 
-  return db`
-    INSERT INTO medflow.appointments (
-      patient_id, 
-      doctor_id, 
-      appointment_datetime, 
-      notes, 
-      status
-    )
-    VALUES (
-      ${patientId},
-      ${data.doctorId},
-      ${data.appointmentDatetime}::timestamptz,
-      ${data.notes ?? null},
-      'pending'
-    )
-    RETURNING *
-  `;
+  const result = await db
+    .insert(appointments)
+    .values({
+      patientId,
+      doctorId: data.doctorId,
+      appointmentDatetime: new Date(data.appointmentDatetime),
+      notes: data.notes ?? null,
+      status: "pending",
+    })
+    .returning();
+
+  return result[0];
 }
 
 export async function getUpcomingAppointmentsForPatient(userId: string) {
-  return db`
-    SELECT 
-      a.id,
-      to_char(a.appointment_datetime, 'YYYY-MM-DD HH24:MI:SS') AS appointment_datetime,
-      a.status,
-      a.notes,
-      CONCAT(u_doctor.first_name, ' ', u_doctor.last_name) AS "doctorName",
-      u_doctor.email
-    FROM medflow.appointments a
-    JOIN medflow.patients p ON a.patient_id = p.id
-    JOIN medflow.doctors d ON a.doctor_id = d.id
-    LEFT JOIN medflow.users u_doctor ON d.user_id = u_doctor.id
-    WHERE p.user_id = ${userId}
-      AND a.appointment_datetime > NOW()
-      AND a.deleted_at IS NULL
-      AND p.deleted_at IS NULL
-    ORDER BY a.appointment_datetime ASC
-  `;
+  const result = await db
+    .select({
+      id: appointments.id,
+      appointment_datetime: sql<string>`to_char(${appointments.appointmentDatetime}, 'YYYY-MM-DD HH24:MI:SS')`,
+      status: appointments.status,
+      notes: appointments.notes,
+      doctorFirstName: users.firstName,
+      doctorLastName: users.lastName,
+      email: users.email,
+    })
+    .from(appointments)
+    .innerJoin(patients, eq(appointments.patientId, patients.id))
+    .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+    .leftJoin(users, eq(doctors.userId, users.id))
+    .where(
+      and(
+        eq(patients.userId, userId),
+        gte(appointments.appointmentDatetime, new Date()),
+        isNull(appointments.deletedAt),
+        isNull(patients.deletedAt),
+      ),
+    )
+    .orderBy(asc(appointments.appointmentDatetime));
+
+  return result.map((r) => ({
+    id: r.id,
+    appointment_datetime: r.appointment_datetime,
+    status: r.status,
+    notes: r.notes,
+    doctorName:
+      [r.doctorFirstName, r.doctorLastName].filter(Boolean).join(" ") ||
+      "Doctor",
+    email: r.email,
+  }));
 }
 
 export async function getPastAppointmentsForPatient(userId: string) {
-  return db`
-    SELECT 
-      a.id,
-      to_char(a.appointment_datetime, 'YYYY-MM-DD HH24:MI:SS') AS appointment_datetime,
-      a.status,
-      a.notes,
-      CONCAT(u_doctor.first_name, ' ', u_doctor.last_name) AS "doctorName",
-      u_doctor.email
-    FROM medflow.appointments a
-    JOIN medflow.patients p ON a.patient_id = p.id
-    JOIN medflow.doctors d ON a.doctor_id = d.id
-    LEFT JOIN medflow.users u_doctor ON d.user_id = u_doctor.id
-    WHERE p.user_id = ${userId}
-      AND a.appointment_datetime < NOW()
-      AND a.deleted_at IS NULL
-      AND p.deleted_at IS NULL
-    ORDER BY a.appointment_datetime DESC
-    LIMIT 10
-  `;
+  const result = await db
+    .select({
+      id: appointments.id,
+      appointment_datetime: sql<string>`to_char(${appointments.appointmentDatetime}, 'YYYY-MM-DD HH24:MI:SS')`,
+      status: appointments.status,
+      notes: appointments.notes,
+      doctorFirstName: users.firstName,
+      doctorLastName: users.lastName,
+      email: users.email,
+    })
+    .from(appointments)
+    .innerJoin(patients, eq(appointments.patientId, patients.id))
+    .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+    .leftJoin(users, eq(doctors.userId, users.id))
+    .where(
+      and(
+        eq(patients.userId, userId),
+        lt(appointments.appointmentDatetime, new Date()),
+        isNull(appointments.deletedAt),
+        isNull(patients.deletedAt),
+      ),
+    )
+    .orderBy(desc(appointments.appointmentDatetime))
+    .limit(10);
+
+  return result.map((r) => ({
+    id: r.id,
+    appointment_datetime: r.appointment_datetime,
+    status: r.status,
+    notes: r.notes,
+    doctorName:
+      [r.doctorFirstName, r.doctorLastName].filter(Boolean).join(" ") ||
+      "Doctor",
+    email: r.email,
+  }));
 }
 
 export async function getAllDepartments() {
-  return db`
-    SELECT id, name
-    FROM medflow.departments
-    ORDER BY name ASC
-  `;
+  return db
+    .select({
+      id: departments.id,
+      name: departments.name,
+    })
+    .from(departments)
+    .orderBy(asc(departments.name));
 }
 
 export async function getUpcomingAppointmentsForDoctor(userId: string) {
-  return db`
-    SELECT 
-      a.id,
-      to_char(a.appointment_datetime, 'YYYY-MM-DD HH24:MI:SS') AS appointment_datetime,
-      a.status,
-      a.notes,
-      CONCAT(u_patient.first_name, ' ', u_patient.last_name) AS "patientName",
-      u_patient.email
-    FROM medflow.appointments a
-    JOIN medflow.patients p ON a.patient_id = p.id
-    JOIN medflow.users u_patient ON p.user_id = u_patient.id
-    JOIN medflow.doctors d ON a.doctor_id = d.id
-    WHERE d.user_id = ${userId}
-      AND a.appointment_datetime > NOW()
-      AND a.deleted_at IS NULL
-      AND p.deleted_at IS NULL
-    ORDER BY a.appointment_datetime ASC
-  `;
+  const result = await db
+    .select({
+      id: appointments.id,
+      appointment_datetime: sql<string>`to_char(${appointments.appointmentDatetime}, 'YYYY-MM-DD HH24:MI:SS')`,
+      status: appointments.status,
+      notes: appointments.notes,
+      patientFirstName: users.firstName,
+      patientLastName: users.lastName,
+      email: users.email,
+    })
+    .from(appointments)
+    .innerJoin(patients, eq(appointments.patientId, patients.id))
+    .innerJoin(users, eq(patients.userId, users.id))
+    .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+    .where(
+      and(
+        eq(doctors.userId, userId),
+        gte(appointments.appointmentDatetime, new Date()),
+        isNull(appointments.deletedAt),
+        isNull(patients.deletedAt),
+      ),
+    )
+    .orderBy(asc(appointments.appointmentDatetime));
+
+  return result.map((r) => ({
+    id: r.id,
+    appointment_datetime: r.appointment_datetime,
+    status: r.status,
+    notes: r.notes,
+    patientName:
+      [r.patientFirstName, r.patientLastName].filter(Boolean).join(" ") ||
+      "Patient",
+    email: r.email,
+  }));
 }
 
 export async function getPastAppointmentsForDoctor(userId: string) {
-  return db`
-    SELECT 
-      a.id,
-      to_char(a.appointment_datetime, 'YYYY-MM-DD HH24:MI:SS') AS appointment_datetime,
-      a.status,
-      a.notes,
-      CONCAT(u_patient.first_name, ' ', u_patient.last_name) AS "patientName",
-      u_patient.email
-    FROM medflow.appointments a
-    JOIN medflow.patients p ON a.patient_id = p.id
-    JOIN medflow.users u_patient ON p.user_id = u_patient.id
-    JOIN medflow.doctors d ON a.doctor_id = d.id
-    WHERE d.user_id = ${userId}
-      AND a.appointment_datetime < NOW()
-      AND a.deleted_at IS NULL
-      AND p.deleted_at IS NULL
-    ORDER BY a.appointment_datetime DESC
-    LIMIT 10
-  `;
+  const result = await db
+    .select({
+      id: appointments.id,
+      appointment_datetime: sql<string>`to_char(${appointments.appointmentDatetime}, 'YYYY-MM-DD HH24:MI:SS')`,
+      status: appointments.status,
+      notes: appointments.notes,
+      patientFirstName: users.firstName,
+      patientLastName: users.lastName,
+      email: users.email,
+    })
+    .from(appointments)
+    .innerJoin(patients, eq(appointments.patientId, patients.id))
+    .innerJoin(users, eq(patients.userId, users.id))
+    .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+    .where(
+      and(
+        eq(doctors.userId, userId),
+        lt(appointments.appointmentDatetime, new Date()),
+        isNull(appointments.deletedAt),
+        isNull(patients.deletedAt),
+      ),
+    )
+    .orderBy(desc(appointments.appointmentDatetime))
+    .limit(10);
+
+  return result.map((r) => ({
+    id: r.id,
+    appointment_datetime: r.appointment_datetime,
+    status: r.status,
+    notes: r.notes,
+    patientName:
+      [r.patientFirstName, r.patientLastName].filter(Boolean).join(" ") ||
+      "Patient",
+    email: r.email,
+  }));
 }
 
-export async function updateAppointmentStatus(appointmentId: string, status: string) {
-  return db`
-    UPDATE medflow.appointments
-    SET status = ${status}
-    WHERE id = ${appointmentId}
-    RETURNING id, status
-  `;
+export async function updateAppointmentStatus(
+  appointmentId: string,
+  status: string,
+) {
+  const result = await db
+    .update(appointments)
+    .set({ status })
+    .where(eq(appointments.id, appointmentId))
+    .returning({
+      id: appointments.id,
+      status: appointments.status,
+    });
+
+  return result[0];
 }
 
 export async function getDoctorAnalytics(userId: string) {
-  const doctorResult = await db`SELECT id FROM medflow.doctors WHERE user_id = ${userId} LIMIT 1`;
+  const doctorResult = await db
+    .select({ id: doctors.id })
+    .from(doctors)
+    .where(eq(doctors.userId, userId))
+    .limit(1);
+
   if (doctorResult.length === 0) return null;
   const doctorId = doctorResult[0].id;
 
-  const totalUpcomingResult = await db`
-    SELECT COUNT(*) as count 
-    FROM medflow.appointments 
-    WHERE doctor_id = ${doctorId} AND appointment_datetime > NOW() AND deleted_at IS NULL
-  `;
+  const totalUpcomingResult = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.doctorId, doctorId),
+        gte(appointments.appointmentDatetime, new Date()),
+        isNull(appointments.deletedAt),
+      ),
+    );
   const totalUpcoming = Number(totalUpcomingResult[0]?.count || 0);
 
-  const totalPastResult = await db`
-    SELECT COUNT(*) as count 
-    FROM medflow.appointments 
-    WHERE doctor_id = ${doctorId} AND appointment_datetime <= NOW() AND deleted_at IS NULL
-  `;
+  const totalPastResult = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.doctorId, doctorId),
+        lt(appointments.appointmentDatetime, new Date()),
+        isNull(appointments.deletedAt),
+      ),
+    );
   const totalPast = Number(totalPastResult[0]?.count || 0);
 
-  const uniquePatientsResult = await db`
-    SELECT COUNT(DISTINCT patient_id) as count 
-    FROM medflow.appointments 
-    WHERE doctor_id = ${doctorId} AND deleted_at IS NULL
-  `;
+  const uniquePatientsResult = await db
+    .select({ count: sql<number>`count(distinct ${appointments.patientId})::int` })
+    .from(appointments)
+    .where(
+      and(eq(appointments.doctorId, doctorId), isNull(appointments.deletedAt)),
+    );
   const uniquePatients = Number(uniquePatientsResult[0]?.count || 0);
 
-  const statusDistributionResult = await db`
-    SELECT status, COUNT(*) as count 
-    FROM medflow.appointments 
-    WHERE doctor_id = ${doctorId} AND deleted_at IS NULL
-    GROUP BY status
-  `;
-  const statusDistribution = statusDistributionResult.map((r: any) => ({
-    name: r.status.charAt(0).toUpperCase() + r.status.slice(1),
-    value: Number(r.count)
+  const statusDistributionResult = await db
+    .select({
+      status: appointments.status,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(appointments)
+    .where(
+      and(eq(appointments.doctorId, doctorId), isNull(appointments.deletedAt)),
+    )
+    .groupBy(appointments.status);
+
+  const statusDistribution = statusDistributionResult.map((r) => {
+    const s = r.status || "pending";
+    return {
+      name: s.charAt(0).toUpperCase() + s.slice(1),
+      value: Number(r.count),
+    };
+  });
+
+  const appointmentsByDayResult = await db
+    .select({
+      date: sql<string>`DATE(${appointments.appointmentDatetime})`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.doctorId, doctorId),
+        gte(appointments.appointmentDatetime, sql`CURRENT_DATE`),
+        lt(appointments.appointmentDatetime, sql`CURRENT_DATE + INTERVAL '7 days'`),
+        isNull(appointments.deletedAt),
+      ),
+    )
+    .groupBy(sql`DATE(${appointments.appointmentDatetime})`)
+    .orderBy(asc(sql`DATE(${appointments.appointmentDatetime})`));
+
+  const appointmentsByDay = appointmentsByDayResult.map((r) => ({
+    date: new Date(r.date).toLocaleDateString("en-US", { weekday: "short" }),
+    appointments: Number(r.count),
   }));
 
-  const appointmentsByDayResult = await db`
-    SELECT 
-      DATE(appointment_datetime) as date,
-      COUNT(*) as count
-    FROM medflow.appointments
-    WHERE doctor_id = ${doctorId} 
-      AND appointment_datetime >= CURRENT_DATE
-      AND appointment_datetime < CURRENT_DATE + INTERVAL '7 days'
-      AND deleted_at IS NULL
-    GROUP BY DATE(appointment_datetime)
-    ORDER BY DATE(appointment_datetime) ASC
-  `;
-
-  // process by day for the next 7 days using UTC dates mapped down
-  const appointmentsByDay = appointmentsByDayResult.map((r: any) => ({
-    date: new Date(r.date).toLocaleDateString("en-US", { weekday: 'short' }),
-    appointments: Number(r.count)
-  }));
-
-  // if the doctor has zero appointments for the week, we still want the graph to render a default structure
   if (appointmentsByDay.length === 0) {
     const defaultDays = [];
     for (let i = 0; i < 7; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() + i);
-        defaultDays.push({
-            date: d.toLocaleDateString("en-US", { weekday: 'short' }),
-            appointments: 0
-        });
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      defaultDays.push({
+        date: d.toLocaleDateString("en-US", { weekday: "short" }),
+        appointments: 0,
+      });
     }
-    return { totalUpcoming, totalPast, uniquePatients, statusDistribution, appointmentsByDay: defaultDays };
+    return {
+      totalUpcoming,
+      totalPast,
+      uniquePatients,
+      statusDistribution,
+      appointmentsByDay: defaultDays,
+    };
   }
 
   return {
@@ -281,109 +412,145 @@ export async function getDoctorAnalytics(userId: string) {
     totalPast,
     uniquePatients,
     statusDistribution,
-    appointmentsByDay
+    appointmentsByDay,
   };
 }
 
 export async function getPatientAnalytics(userId: string) {
-  let patientId;
+  let patientId: string;
   try {
-    // defined earlier in the file!
-    const result = await db`SELECT id FROM medflow.patients WHERE user_id = ${userId} AND deleted_at IS NULL LIMIT 1`;
+    const result = await db
+      .select({ id: patients.id })
+      .from(patients)
+      .where(and(eq(patients.userId, userId), isNull(patients.deletedAt)))
+      .limit(1);
+
     if (result.length === 0) return null;
     patientId = result[0].id;
-  } catch (error) {
-    return null; 
+  } catch {
+    return null;
   }
 
-  const totalVisitsResult = await db`
-    SELECT COUNT(*) as count 
-    FROM medflow.appointments 
-    WHERE patient_id = ${patientId} AND deleted_at IS NULL
-  `;
+  const totalVisitsResult = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.patientId, patientId),
+        isNull(appointments.deletedAt),
+      ),
+    );
   const totalVisits = Number(totalVisitsResult[0]?.count || 0);
 
-  const uniqueDoctorsResult = await db`
-    SELECT COUNT(DISTINCT doctor_id) as count 
-    FROM medflow.appointments 
-    WHERE patient_id = ${patientId} AND deleted_at IS NULL
-  `;
+  const uniqueDoctorsResult = await db
+    .select({ count: sql<number>`count(distinct ${appointments.doctorId})::int` })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.patientId, patientId),
+        isNull(appointments.deletedAt),
+      ),
+    );
   const uniqueDoctors = Number(uniqueDoctorsResult[0]?.count || 0);
 
-  const departmentDistributionResult = await db`
-    SELECT dep.name as department, COUNT(a.id) as count
-    FROM medflow.appointments a
-    JOIN medflow.doctors d ON a.doctor_id = d.id
-    JOIN medflow.departments dep ON d.department_id = dep.id
-    WHERE a.patient_id = ${patientId} AND a.deleted_at IS NULL
-    GROUP BY dep.name
-  `;
-  
-  const departmentDistribution = departmentDistributionResult.map((r: any) => ({
+  const departmentDistributionResult = await db
+    .select({
+      department: departments.name,
+      count: sql<number>`count(${appointments.id})::int`,
+    })
+    .from(appointments)
+    .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+    .innerJoin(departments, eq(doctors.departmentId, departments.id))
+    .where(
+      and(
+        eq(appointments.patientId, patientId),
+        isNull(appointments.deletedAt),
+      ),
+    )
+    .groupBy(departments.name);
+
+  const departmentDistribution = departmentDistributionResult.map((r) => ({
     name: r.department,
-    value: Number(r.count)
+    value: Number(r.count),
   }));
 
   return {
     totalVisits,
     uniqueDoctors,
-    departmentDistribution
+    departmentDistribution,
   };
 }
 
 export async function getAdminAnalytics() {
-  const totalDoctorsResult = await db`SELECT COUNT(*) as count FROM medflow.doctors WHERE deleted_at IS NULL`;
+  const totalDoctorsResult = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(doctors)
+    .where(isNull(doctors.deletedAt));
   const totalDoctors = Number(totalDoctorsResult[0]?.count || 0);
 
-  const totalPatientsResult = await db`SELECT COUNT(*) as count FROM medflow.patients WHERE deleted_at IS NULL`;
+  const totalPatientsResult = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(patients)
+    .where(isNull(patients.deletedAt));
   const totalPatients = Number(totalPatientsResult[0]?.count || 0);
 
-  const totalAppointmentsResult = await db`SELECT COUNT(*) as count FROM medflow.appointments WHERE deleted_at IS NULL`;
+  const totalAppointmentsResult = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(appointments)
+    .where(isNull(appointments.deletedAt));
   const totalAppointments = Number(totalAppointmentsResult[0]?.count || 0);
 
-  const totalDepartmentsResult = await db`SELECT COUNT(*) as count FROM medflow.departments`;
+  const totalDepartmentsResult = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(departments);
   const totalDepartments = Number(totalDepartmentsResult[0]?.count || 0);
 
-  const appointmentsByDayResult = await db`
-    SELECT 
-      DATE(appointment_datetime) as date,
-      COUNT(*) as count
-    FROM medflow.appointments
-    WHERE appointment_datetime >= CURRENT_DATE
-      AND appointment_datetime < CURRENT_DATE + INTERVAL '7 days'
-      AND deleted_at IS NULL
-    GROUP BY DATE(appointment_datetime)
-    ORDER BY DATE(appointment_datetime) ASC
-  `;
-  
-  const appointmentsByDay = appointmentsByDayResult.map((r: any) => ({
-    date: new Date(r.date).toLocaleDateString("en-US", { weekday: 'short' }),
-    appointments: Number(r.count)
+  const appointmentsByDayResult = await db
+    .select({
+      date: sql<string>`DATE(${appointments.appointmentDatetime})`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(appointments)
+    .where(
+      and(
+        gte(appointments.appointmentDatetime, sql`CURRENT_DATE`),
+        lt(appointments.appointmentDatetime, sql`CURRENT_DATE + INTERVAL '7 days'`),
+        isNull(appointments.deletedAt),
+      ),
+    )
+    .groupBy(sql`DATE(${appointments.appointmentDatetime})`)
+    .orderBy(asc(sql`DATE(${appointments.appointmentDatetime})`));
+
+  const appointmentsByDay = appointmentsByDayResult.map((r) => ({
+    date: new Date(r.date).toLocaleDateString("en-US", { weekday: "short" }),
+    appointments: Number(r.count),
   }));
-  
+
   if (appointmentsByDay.length === 0) {
     for (let i = 0; i < 7; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() + i);
-        appointmentsByDay.push({
-            date: d.toLocaleDateString("en-US", { weekday: 'short' }),
-            appointments: 0
-        });
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      appointmentsByDay.push({
+        date: d.toLocaleDateString("en-US", { weekday: "short" }),
+        appointments: 0,
+      });
     }
   }
 
-  const departmentDistributionResult = await db`
-    SELECT dep.name as department, COUNT(a.id) as count
-    FROM medflow.appointments a
-    JOIN medflow.doctors d ON a.doctor_id = d.id
-    JOIN medflow.departments dep ON d.department_id = dep.id
-    WHERE a.deleted_at IS NULL
-    GROUP BY dep.name
-  `;
-  
-  const departmentDistribution = departmentDistributionResult.map((r: any) => ({
+  const departmentDistributionResult = await db
+    .select({
+      department: departments.name,
+      count: sql<number>`count(${appointments.id})::int`,
+    })
+    .from(appointments)
+    .innerJoin(doctors, eq(appointments.doctorId, doctors.id))
+    .innerJoin(departments, eq(doctors.departmentId, departments.id))
+    .where(isNull(appointments.deletedAt))
+    .groupBy(departments.name);
+
+  const departmentDistribution = departmentDistributionResult.map((r) => ({
     name: r.department,
-    value: Number(r.count)
+    value: Number(r.count),
   }));
 
   return {
@@ -392,6 +559,6 @@ export async function getAdminAnalytics() {
     totalAppointments,
     totalDepartments,
     appointmentsByDay,
-    departmentDistribution
+    departmentDistribution,
   };
 }

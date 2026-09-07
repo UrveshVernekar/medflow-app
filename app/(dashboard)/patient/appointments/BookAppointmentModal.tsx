@@ -31,19 +31,33 @@ import {
 } from "@/features/appointments/appointment.actions";
 import { SPECIALIZATIONS } from "@/config/specializations";
 
+interface BookingDoctor {
+  id: string;
+  name: string;
+  specialization: string;
+  department: string;
+  yearsOfExperience: number;
+  email?: string;
+}
+
+interface DepartmentItem {
+  id: string;
+  name: string;
+}
+
 export default function BookAppointmentModal({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
 
   // STEP 1 STATES
-  const [doctors, setDoctors] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [doctors, setDoctors] = useState<BookingDoctor[]>([]);
+  const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedSpecialization, setSelectedSpecialization] = useState("all");
 
   // STEP 2 STATES
-  const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<BookingDoctor | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -58,9 +72,9 @@ export default function BookAppointmentModal({ userId }: { userId: string }) {
             getDoctorsForBooking(),
             getAllDepartments(),
           ]);
-          setDoctors(docsData);
-          setDepartments(depsData);
-        } catch (e) {
+          setDoctors((docsData as BookingDoctor[]) || []);
+          setDepartments((depsData as DepartmentItem[]) || []);
+        } catch {
           toast.error("Failed to load doctors");
         }
       };
@@ -86,7 +100,7 @@ export default function BookAppointmentModal({ userId }: { userId: string }) {
     });
   }, [doctors, searchTerm, selectedDepartment, selectedSpecialization]);
 
-  const handleDoctorSelect = async (doctor: any) => {
+  const handleDoctorSelect = async (doctor: BookingDoctor) => {
     setSelectedDoctor(doctor);
     setStep(2);
     const today = new Date().toISOString().split("T")[0];
@@ -99,7 +113,7 @@ export default function BookAppointmentModal({ userId }: { userId: string }) {
       const slots = await getAvailableSlotsForDoctor(doctorId, dateStr);
       setAvailableSlots(slots);
       setSelectedSlot("");
-    } catch (e) {
+    } catch {
       toast.error("Failed to load slots");
       setAvailableSlots([]);
     }
@@ -137,8 +151,9 @@ export default function BookAppointmentModal({ userId }: { userId: string }) {
       setSearchTerm("");
       setSelectedDepartment("all");
       setSelectedSpecialization("all");
-    } catch (err: any) {
-      toast.error(err.message || "Booking failed");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Booking failed";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

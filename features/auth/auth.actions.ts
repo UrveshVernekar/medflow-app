@@ -4,6 +4,8 @@ import { loginSchema, registerSchema } from "./auth.schema";
 import { createUser, getUserByEmail } from "./auth.service";
 import { signIn, signOut } from "@/lib/auth";
 import { createPatientProfile } from "@/features/patients/patient.service";
+import { db } from "@/lib/db";
+import { logAuditAction } from "@/lib/audit";
 
 export async function registerAction(formData: FormData) {
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
@@ -19,12 +21,23 @@ export async function registerAction(formData: FormData) {
     return { error: "User already exists" };
   }
 
-  const user = await createUser(email, password, role);
+  const user = await db.transaction(async (tx) => {
+    const newUser = await createUser(email, password, role);
 
-  // ✅ AUTO CREATE PATIENT PROFILE
-  if (role === "patient") {
-    await createPatientProfile(user.id);
-  }
+    if (role === "patient") {
+      await createPatientProfile(newUser.id, tx);
+    }
+
+    return newUser;
+  });
+
+  await logAuditAction({
+    userId: user.id,
+    action: "USER_REGISTERED",
+    resource: "users",
+    resourceId: user.id,
+    details: `User registered with role ${role}`,
+  });
 
   return {
     success: true,
@@ -47,12 +60,13 @@ export async function loginAction(formData: FormData) {
       password,
       redirect: false,
     });
-  } catch (error: any) {
-    if (error?.name === "AuthError" || error?.type) {
+  } catch (error: unknown) {
+    const err = error as { name?: string; type?: string; message?: string };
+    if (err?.name === "AuthError" || err?.type) {
       return { error: "Invalid email or password" };
     }
 
-    if (error?.message?.includes("CredentialsSignin")) {
+    if (err?.message?.includes("CredentialsSignin")) {
       return { error: "Invalid email or password" };
     }
 
@@ -64,6 +78,13 @@ export async function loginAction(formData: FormData) {
   if (!user?.role) {
     return { error: "Failed to get user role" };
   }
+
+  await logAuditAction({
+    userId: user.id,
+    action: "USER_LOGIN",
+    resource: "users",
+    resourceId: user.id,
+  });
 
   return {
     success: true,

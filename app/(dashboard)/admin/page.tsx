@@ -36,7 +36,7 @@ export default async function AdminPage() {
         </div>
 
         {/* Client Component rendering the Graphs */}
-        <AdminDashboardClient stats={stats as any} />
+        <AdminDashboardClient stats={stats} />
 
       </div>
     </div>

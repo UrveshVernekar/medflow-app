@@ -20,6 +20,15 @@ export default async function DoctorsPage({
     getDepartments(),
   ]);
 
+  const formattedDoctors = doctors.map((d) => ({
+    id: d.id,
+    name: d.name,
+    email: d.email || "",
+    specialization: d.specialization,
+    years_of_experience: d.years_of_experience ?? 0,
+    department_name: d.department_name || "General",
+  }));
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-zinc-50 to-teal-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 p-6 lg:p-10">
       <div className="max-w-7xl mx-auto space-y-10">
@@ -79,7 +88,7 @@ export default async function DoctorsPage({
                     className="w-full h-14 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 pl-12 pr-5 text-base focus-visible:border-blue-600 focus-visible:ring-blue-600/30 transition-all appearance-none"
                   >
                     <option value="">All Departments</option>
-                    {departments.map((d: any) => (
+                    {departments.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.name}
                       </option>
@@ -111,7 +120,7 @@ export default async function DoctorsPage({
               </form>
             </div>
 
-            <DoctorTable doctors={doctors as unknown as any[]} />
+            <DoctorTable doctors={formattedDoctors} />
           </CardContent>
         </Card>
       </div>

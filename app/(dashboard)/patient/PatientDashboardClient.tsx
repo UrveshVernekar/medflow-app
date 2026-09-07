@@ -15,7 +15,7 @@ type Stats = {
   departmentDistribution: { name: string; value: number }[];
 };
 
-export default function PatientDashboardClient({ stats }: { stats: Stats }) {
+export default function PatientDashboardClient({ stats }: { stats: Stats | null }) {
   const safeStats = stats || {
     totalVisits: 0,
     uniqueDoctors: 0,
@@ -135,7 +135,7 @@ export default function PatientDashboardClient({ stats }: { stats: Stats }) {
               </div>
             ) : (
               <div className="h-full flex items-center justify-center text-zinc-500 text-sm italic bg-zinc-50/50 dark:bg-zinc-900/20 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                You haven't visited any departments yet.
+                You haven&apos;t visited any departments yet.
               </div>
             )}
           </CardContent>

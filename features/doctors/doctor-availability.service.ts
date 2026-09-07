@@ -1,12 +1,14 @@
 import { db } from "@/lib/db";
+import { doctors, doctorAvailability } from "@/lib/db/schema";
+import { eq, isNull, and, asc } from "drizzle-orm";
 import type { AvailabilitySlot } from "./doctor-availability.types";
 
 export async function getDoctorAvailability(userId: string) {
-  const doctorResult = await db`
-    SELECT id FROM medflow.doctors 
-    WHERE user_id = ${userId} AND deleted_at IS NULL
-    LIMIT 1
-  `;
+  const doctorResult = await db
+    .select({ id: doctors.id })
+    .from(doctors)
+    .where(and(eq(doctors.userId, userId), isNull(doctors.deletedAt)))
+    .limit(1);
 
   if (doctorResult.length === 0) {
     throw new Error("Doctor profile not found");
@@ -14,17 +16,20 @@ export async function getDoctorAvailability(userId: string) {
 
   const doctorId = doctorResult[0].id;
 
-  const result = await db`
-    SELECT day_of_week, start_time, end_time 
-    FROM medflow.doctor_availability 
-    WHERE doctor_id = ${doctorId} 
-    ORDER BY day_of_week
-  `;
+  const result = await db
+    .select({
+      dayOfWeek: doctorAvailability.dayOfWeek,
+      startTime: doctorAvailability.startTime,
+      endTime: doctorAvailability.endTime,
+    })
+    .from(doctorAvailability)
+    .where(eq(doctorAvailability.doctorId, doctorId))
+    .orderBy(asc(doctorAvailability.dayOfWeek));
 
-  const slots: AvailabilitySlot[] = result.map((row: any) => ({
-    dayOfWeek: row.day_of_week,
-    startTime: row.start_time,
-    endTime: row.end_time,
+  const slots: AvailabilitySlot[] = result.map((row) => ({
+    dayOfWeek: row.dayOfWeek as AvailabilitySlot["dayOfWeek"],
+    startTime: row.startTime,
+    endTime: row.endTime,
   }));
 
   return { slots };
@@ -38,53 +43,40 @@ export async function upsertDoctorAvailability(
     throw new Error("Invalid slots data received");
   }
 
-  // Get doctor_id
-  const doctorResult = await db`
-    SELECT id FROM medflow.doctors 
-    WHERE user_id = ${userId} AND deleted_at IS NULL
-    LIMIT 1
-  `;
+  return await db.transaction(async (tx) => {
+    const doctorResult = await tx
+      .select({ id: doctors.id })
+      .from(doctors)
+      .where(and(eq(doctors.userId, userId), isNull(doctors.deletedAt)))
+      .limit(1);
 
-  if (doctorResult.length === 0) {
-    throw new Error(
-      "Doctor profile not found. Please ask Admin to create your doctor profile.",
+    if (doctorResult.length === 0) {
+      throw new Error(
+        "Doctor profile not found. Please ask Admin to create your doctor profile.",
+      );
+    }
+
+    const doctorId = doctorResult[0].id;
+
+    // Delete old slots inside transaction
+    await tx
+      .delete(doctorAvailability)
+      .where(eq(doctorAvailability.doctorId, doctorId));
+
+    if (slots.length === 0) {
+      return { success: true };
+    }
+
+    // Bulk insert new slots
+    await tx.insert(doctorAvailability).values(
+      slots.map((slot) => ({
+        doctorId,
+        dayOfWeek: slot.dayOfWeek,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      })),
     );
-  }
 
-  const doctorId = doctorResult[0].id;
-
-  // Delete old slots
-  await db`
-    DELETE FROM medflow.doctor_availability 
-    WHERE doctor_id = ${doctorId}
-  `;
-
-  if (slots.length === 0) {
     return { success: true };
-  }
-
-  // Build dynamic insert
-  const valuePlaceholders = slots
-    .map((_, i) => {
-      const offset = i * 4;
-      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`;
-    })
-    .join(", ");
-
-  const params: any[] = [];
-  slots.forEach((slot) => {
-    params.push(doctorId, slot.dayOfWeek, slot.startTime, slot.endTime);
   });
-
-  // Execute insert
-  await db.unsafe(
-    `
-    INSERT INTO medflow.doctor_availability 
-      (doctor_id, day_of_week, start_time, end_time)
-    VALUES ${valuePlaceholders}
-  `,
-    params,
-  );
-
-  return { success: true };
 }

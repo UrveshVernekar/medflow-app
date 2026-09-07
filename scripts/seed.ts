@@ -16,8 +16,8 @@ async function seed() {
   console.log("🌱 Starting MedFlow EMR Database Cleanup & Rich Data Seeding...");
 
   try {
-    // 1. CLEANUP PREVIOUS DATA
-    console.log("🧹 Clearing old appointments, doctor availability, patients, doctors, departments, and users...");
+    console.log("🧹 Clearing old appointments, doctor availability, patients, doctors, departments, users, and audit logs...");
+    await sql`DELETE FROM medflow.audit_logs;`;
     await sql`DELETE FROM medflow.appointments;`;
     await sql`DELETE FROM medflow.doctor_availability;`;
     await sql`DELETE FROM medflow.patients;`;

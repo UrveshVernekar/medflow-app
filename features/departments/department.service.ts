@@ -1,18 +1,21 @@
 import { db } from "@/lib/db";
+import { departments } from "@/lib/db/schema";
+import { eq, asc } from "drizzle-orm";
 
 export async function getDepartments() {
-  return db`
-    SELECT * FROM medflow.departments
-    ORDER BY name ASC
-  `;
+  return db.select().from(departments).orderBy(asc(departments.name));
 }
 
 export async function createDepartment(name: string, description?: string) {
-  return db`
-    INSERT INTO medflow.departments (name, description)
-    VALUES (${name}, ${description ?? null})
-    RETURNING *
-  `;
+  const result = await db
+    .insert(departments)
+    .values({
+      name,
+      description: description ?? null,
+    })
+    .returning();
+
+  return result[0];
 }
 
 export async function updateDepartment(
@@ -20,16 +23,17 @@ export async function updateDepartment(
   name: string,
   description?: string,
 ) {
-  return db`
-    UPDATE medflow.departments
-    SET name = ${name}, description = ${description ?? null}, updated_at = now()
-    WHERE id = ${id}
-  `;
+  return db
+    .update(departments)
+    .set({
+      name,
+      description: description ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(departments.id, id))
+    .returning();
 }
 
 export async function deleteDepartment(id: string) {
-  return db`
-    DELETE FROM medflow.departments
-    WHERE id = ${id}
-  `;
+  return db.delete(departments).where(eq(departments.id, id)).returning();
 }

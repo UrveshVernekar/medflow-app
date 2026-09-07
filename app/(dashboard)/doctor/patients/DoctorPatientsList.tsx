@@ -78,7 +78,7 @@ export default function DoctorPatientsList({ userId }: { userId: string }) {
               No Patients Found
             </p>
             <p className="text-zinc-500 text-sm mt-1 max-w-sm">
-              You haven't interacted with any patients yet. Once appointments are booked, patients will appear in this directory.
+              You haven&apos;t interacted with any patients yet. Once appointments are booked, patients will appear in this directory.
             </p>
           </CardContent>
         </Card>

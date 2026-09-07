@@ -140,7 +140,7 @@ export default async function DepartmentsPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {departments.map((dept: any) => (
+                    {departments.map((dept) => (
                       <div
                         key={dept.id}
                         className="group flex items-center justify-between rounded-2xl border border-zinc-200 dark:border-zinc-800 p-7 hover:border-blue-200 dark:hover:border-blue-900 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all duration-200"

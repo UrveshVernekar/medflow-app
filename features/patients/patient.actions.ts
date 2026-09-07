@@ -2,8 +2,11 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { patients } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { patientProfileSchema } from "./patient.schema";
 import { getPatientsForDoctor, getAllPatientsAdmin } from "./patient.service";
+import { logAuditAction } from "@/lib/audit";
 
 export async function updatePatientProfile(formData: FormData) {
   const session = await auth();
@@ -13,17 +16,24 @@ export async function updatePatientProfile(formData: FormData) {
   const parsed = patientProfileSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Invalid input" };
 
-  await db`
-    UPDATE medflow.patients
-    SET
-      first_name = ${parsed.data.first_name},
-      last_name = ${parsed.data.last_name},
-      gender = ${parsed.data.gender},
-      contact_number = ${parsed.data.contact_number},
-      address = ${parsed.data.address ?? null},
-      updated_at = now()
-    WHERE user_id = ${session.user.id}
-  `;
+  await db
+    .update(patients)
+    .set({
+      firstName: parsed.data.first_name,
+      lastName: parsed.data.last_name,
+      gender: parsed.data.gender,
+      contactNumber: parsed.data.contact_number,
+      address: parsed.data.address ?? null,
+      updatedAt: new Date(),
+    })
+    .where(eq(patients.userId, session.user.id));
+
+  await logAuditAction({
+    userId: session.user.id,
+    action: "UPDATE_PROFILE",
+    resource: "patient",
+    resourceId: session.user.id,
+  });
 
   return { success: true };
 }

@@ -4,6 +4,8 @@ import { createDoctorSchema } from "./doctor.schema";
 import { createUser } from "@/features/auth/auth.service";
 import { createDoctorProfile } from "./doctor.service";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { logAuditAction } from "@/lib/audit";
 
 export async function createDoctorAction(formData: FormData) {
   const session = await auth();
@@ -30,13 +32,29 @@ export async function createDoctorAction(formData: FormData) {
     department_id,
   } = parsed.data;
 
-  const user = await createUser(email, password, "doctor");
+  const result = await db.transaction(async (tx) => {
+    const user = await createUser(email, password, "doctor");
 
-  await createDoctorProfile(user.id, {
-    specialization,
-    license_number,
-    years_of_experience,
-    department_id,
+    const doctor = await createDoctorProfile(
+      user.id,
+      {
+        specialization,
+        license_number,
+        years_of_experience,
+        department_id,
+      },
+      tx,
+    );
+
+    return { user, doctor };
+  });
+
+  await logAuditAction({
+    userId: session.user.id,
+    action: "CREATE_DOCTOR",
+    resource: "doctors",
+    resourceId: result.doctor.id,
+    details: `Admin created doctor profile for ${email}`,
   });
 
   return { success: true };
